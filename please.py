@@ -739,14 +739,90 @@ def process(text_):
 		with open(os.path.expanduser(file_path),'r') as f:
 			text = f.read()
 		pats = ['Definition', 'Theorem', 'Lemma', 'Example', 'Exercise']
+		words = ['signature', 'sequent', 'equivalence', 'truth table', 'tree', 'substitution', 'derivation']
+		#words = []
 		pat_rex = {}; pat_matches = {};
 		for pat in pats:
 			pat_rex[pat] = r"\b({})(\s*)(\d+)((?:\.\d+)+)*".format(pat)
 			pat_matches[pat] = find_matches(pat_rex[pat], text)
+		for word in words:
+			pat_rex[word] = r"\b({})\b".format(word)
+			pat_matches[word] = find_matches(pat_rex[word], text)
 		if g_dbg:
-			print [(pat, sum(1 for _ in pat_matches[pat])) for pat in pats]
+			all_words_table = {}
+			all_text_words = text.split()
+			all_math_words = []
+			all_invalid_words = []
+			all_no_words = []
+			all_nonmath_words = []
+			def clean_word(strng):
+				ret = ''.join(ch for ch in strng.strip() if ch.isalnum() or ch in ['-']).lower()
+				return '' if any(x.isdigit() for x in ret) else ret
+			for word in all_text_words:
+				word = clean_word(word)
+				if len(word):
+					all_words_table[word] = {}
+					if word.endswith('s'):
+						word2 = clean_word(word[:-1])
+						if len(word2):
+							all_words_table[word2] = {}
+			print 'Processing {} words ...'.format(len(all_words_table))
+			ll = 0
+			all_words_sorted = sorted(all_words_table.keys())
+			for word in all_words_sorted:
+				ll = ll+1
+				def is_valid_path(path):
+					return os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)
+				word = clean_word(word)
+				dict_temp = os.path.join(fptemp(), 'dict')
+				mktemp()
+				if os.path.isdir(dict_temp) == False:
+					os.mkdir(dict_temp)
+				word_cache_path = os.path.join(dict_temp, 'cache_{}.txt'.format(word))
+				is_cacheable = is_valid_path(word_cache_path)
+				has_cache = os.path.exists(word_cache_path)
+				if is_cacheable and (has_cache == False):
+					site = 'en.wiktionary.org'
+					site = 'en.wikipedia.org'
+					url = 'https://{}/w/api.php?action=query&titles={}&prop=extracts&format=json'.format(site, word)
+					resp = requests.post(url)
+					with open(word_cache_path, 'w') as fo:
+						fo.write(resp.text)
+				if os.path.exists(word_cache_path):
+					resp_text = ''
+					with open(word_cache_path, 'r') as fi:
+						resp_text = fi.read().lower()
+					word_type = ''
+					if any(x in resp_text for x in ['mathematics', 'mathematical']):
+						word_type = 'math'
+					elif 'The requested page title contains invalid characters'.lower() in resp_text:
+						word_type = ''
+					elif '"missing":""' in resp_text:
+						word_type = ''
+					else:
+						word_type = 'nonmath'
+					if word_type == 'math':
+						all_math_words.append(word); vt_col('yellow'); print ' {} '.format(word),; vt_col('default');
+					elif word_type == 'nonmath':
+						all_nonmath_words.append(word); vt_col('blue'); print ' {} '.format(word),; vt_col('default');
+					else:
+						all_invalid_words.append(word); vt_col('red'); print ' {} '.format(word),; vt_col('default');
+					sys.stdout.flush()
+			math_words_cache_path = os.path.join(dict_temp, 'cache2_math.txt')
+			nonmath_words_cache_path = os.path.join(dict_temp, 'cache2_nonmath.txt')
+			non_words_cache_path = os.path.join(dict_temp, 'cache2_none.txt')
+			with open(math_words_cache_path, 'w') as fo:
+				fo.write('\n'.join(all_math_words))
+			with open(nonmath_words_cache_path, 'w') as fo:
+				fo.write('\n'.join(all_nonmath_words))
+			with open(non_words_cache_path, 'w') as fo:
+				fo.write('\n'.join(all_invalid_words))
+			print len(all_words_table), len(all_math_words), len(all_nonmath_words)
+			return
+		if g_dbg:
+			print [(x, sum(1 for _ in pat_matches[x])) for x in pat_rex.keys()]
 		pat_info = {}
-		for pat in pats:
+		for pat in pats+words:
 			pat_info[pat] = {}
 			matches = find_matches(pat_rex[pat], text)
 			for match in matches:
@@ -761,17 +837,34 @@ def process(text_):
 				else:
 					pat_info[pat][match_str] = { 'count':1, 'starts':[match.start()] }
 		match_dist_table = {}
-		for pat in pats:
+		match_def_table = {}
+		for pat in pats + words:
 			for match_str, match_info in pat_info[pat].items():
 				match_dist_table[match_str] = {}
-				for pat2 in pats:
+				for pat2 in pats + words:
 					for match_str2, match_info2 in pat_info[pat2].items():
 						if match_str2 > match_str:
-							dists = []
-							for si in match_info['starts']:
-								for sj in match_info2['starts']:
-									dists.append(abs(si-sj))
-							match_dist_table[match_str][match_str2] = min(dists)
+							is_word_problem = any([x in words for x in [pat, pat2]])
+							is_word_word_problem = all([x in words for x in [pat, pat2]])
+							if is_word_word_problem == False:
+								if is_word_problem:
+									is_def_problem = any(['definition' in x.lower() for x in [pat, pat2]])
+									if is_def_problem:
+										dists = []
+										for si in match_info['starts']:
+											for sj in match_info2['starts']:
+												dists.append(abs(si-sj))
+										min_dist = min(dists)
+										word, defn = (pat, match_str2) if pat in words else (pat2, match_str)
+										curr_defn, curr_dist = match_def_table.get(word, (defn, min_dist+1))
+										if min_dist < curr_dist:
+											match_def_table[word] = (defn, min_dist)
+								else:
+									dists = []
+									for si in match_info['starts']:
+										for sj in match_info2['starts']:
+											dists.append(abs(si-sj))
+									match_dist_table[match_str][match_str2] = min(dists)
 		match_dist_flat = []
 		for match_str, match_dists in match_dist_table.items():
 			for match_str2, match_dist in match_dists.items():
@@ -779,6 +872,8 @@ def process(text_):
 		match_dist_flat = sorted(match_dist_flat, key = lambda x: x[2])
 		if g_dbg:
 			print [(pat, len(pat_info[pat])) for (i, pat) in enumerate(pats)]
+			print match_def_table
+			return
 		dist_rels = []
 		for mdist in match_dist_flat:
 			if mdist[2] / 8 < max_n:
@@ -791,6 +886,20 @@ def process(text_):
 			print match_dist_flat[:3]
 		if g_dbg:
 			print dist_rels
+		if False and len(words):
+			word_occur = {}
+			words_lower = [x.lower() for x in words]
+			text_words = text.split(' ')
+			for i,word in enumerate(words_lower):
+				word_occur[words[i]] = []
+			for ti,tword in enumerate(text_words):
+				for i,word in enumerate(words_lower):
+					if tword.lower().strip() == word:
+						word_occur[words[i]].append(ti)
+			for word,occur in word_occur.items():
+				doccur = [x-occur[xi-1] if xi > 0 else 1 for xi,x in enumerate(occur)]
+				print word, '\n'.join(['[' + ''.join(['-']*int(math.log(x, 1.1))) + ']' for x in doccur])
+			return
 		if graphviz:
 			def make_node_name(strg):
 				return strg.replace(' ', '_').replace('.', '_').lower()
