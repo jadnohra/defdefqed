@@ -1,7 +1,9 @@
-import sys, os, re
+import sys, os, re, subprocess
 import requests
 
-if '-no_spacy' not in sys.argv:
+g_dbg = '-dbg' in sys.argv
+
+def import_spacy():
 	print ' Loading spacy..',; sys.stdout.flush();
 	import spacy
 	nlp = spacy.load('en')
@@ -35,6 +37,31 @@ def unistr(strg):
 	if not isinstance(strg, unicode):
 		return unicode(strg, "utf-8")
 	return strg
+
+
+def do_scrape(url, stay_in, info_table, graph_table):
+	import lxml, lxml.html, lxml.cssselect, urllib, urlparse
+	if url in info_table:
+		return
+	else:
+		info_table[url] = url
+		graph_table[url] = {}
+	if len(info_table) >= 100:
+		return
+	urllib.URLopener.version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36 SE 2.X MetaSr 1.0'
+	print ' Reading [{}] ..'.format(url), ;sys.stdout.flush();
+	page = requests.get(url)
+	print '.'
+	dom =  lxml.html.fromstring(page.text)
+	selAnchor = lxml.cssselect.CSSSelector('a')
+	foundElements = selAnchor(dom)
+	foundUrls = [ (e.get('href'), urlparse.urljoin(url, e.get('href'))) for e in foundElements if e.get('href') and ('#' not in  e.get('href'))]
+	foundUrls = [x for x in foundUrls if x[1].startswith(stay_in)]
+	for furl in foundUrls:
+		graph_table[url][furl[1]] = furl[1]
+	for furl in foundUrls:
+		do_scrape(furl[1], stay_in, info_table, graph_table)
+	#print foundUrls
 
 def find_word_type(word):
 	def clean_word(strng):
@@ -75,6 +102,7 @@ def find_word_type(word):
 	return word_type
 
 def parse(text):
+	import_spacy()
 	#print ' Parsing ..',; sys.stdout.flush();
 	doc = nlp(unistr(text))
 	#print '.'
@@ -99,7 +127,36 @@ def parse(text):
 			print ' ', (np.text, np.root.text, np.root.dep_, np.root.head.text)
 
 def main():
-	if '-bourb' in sys.argv[1]:
+	if 'http' in sys.argv[1]:
+		info_table = {}; graph_table = {};
+		do_scrape(sys.argv[1], sys.argv[2], info_table, graph_table)
+		#print graph_table
+		import graphviz
+		if graphviz:
+			def make_node_name(strg):
+				return strg.replace(' ', '_').replace('.', '_').replace(':', '_').replace('/', '_').lower()
+			graph = graphviz.Digraph(comment='Analysis of "[{}]"'.format(sys.argv[1]))
+			for url,furls in graph_table.items():
+				if len(furls) < 20 and len(furls) > 0:
+					if g_dbg:
+						print make_node_name(url)
+					graph.node(make_node_name(url), url)
+					for furl in furls.keys():
+						if g_dbg:
+							print make_node_name(furl)
+						graph.node(make_node_name(furl), furl)
+						graph.edge(make_node_name(url), make_node_name(furl))
+			#print graph.source
+			dot_fpath = './temp'+'.dot'
+			with open(os.path.expanduser(dot_fpath),'w') as fo:
+				fo.write(graph.source)
+			pdf_fpath = dot_fpath+'.pdf'
+			pop_in = ['dot', '-Tpdf', '"-o{}"'.format(pdf_fpath), '"{}"'.format(dot_fpath)]
+			pop = subprocess.Popen(' '.join(pop_in), shell = True, stdout=subprocess.PIPE)
+			out, err = pop.communicate()
+			if g_dbg and len(err):
+				vt_col('red'); print err; vt_col('default')
+	elif '-bourb' in sys.argv:
 		file_path = 'bourb_el_alg_1.txt'
 		def find_matches(rex, text):
 			#return re.finditer(rex, text, re.IGNORECASE)
