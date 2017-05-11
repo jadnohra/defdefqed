@@ -1,5 +1,6 @@
-import sys, os, re, subprocess
+import sys, os, re, subprocess, io
 import requests
+import unidecode
 
 g_dbg = '-dbg' in sys.argv
 
@@ -38,29 +39,70 @@ def unistr(strg):
 		return unicode(strg, "utf-8")
 	return strg
 
+def str_to_ascii(strg):
+	strg = unistr(strg)
+	strg = unidecode.unidecode(strg)
+	return strg
 
-def do_scrape(url, stay_in, info_table, graph_table):
+def do_scrape(url, stay_in, info_table, graph_table, ignore_table, words, max_urls, verbose):
 	import lxml, lxml.html, lxml.cssselect, urllib, urlparse
-	if url in info_table:
+	def get_page_text(url):
+		def make_url_file(strg):
+			return strg.replace(' ', '_').replace('.', '_').replace(':', '_').replace('/', '_').lower()
+		def is_valid_path(path):
+			return os.path.exists(path) or os.access(os.path.dirname(path), os.W_OK)
+		scrape_temp = os.path.join(fptemp(), 'scrape')
+		mktemp()
+		if os.path.isdir(scrape_temp) == False:
+			os.mkdir(scrape_temp)
+		url_cache_path = os.path.join(scrape_temp, 'cache_{}.txt'.format(make_url_file(url)))
+		is_cacheable = is_valid_path(url_cache_path)
+		has_cache = os.path.exists(url_cache_path)
+		if is_cacheable:
+			if has_cache == False:
+				resp = requests.get(url)
+				with io.open(url_cache_path, 'w', encoding='utf-8') as fo:
+					fo.write(resp.text)
+					return resp.text
+			else:
+				if verbose:
+					print ' (cached) ',
+				resp_text = ''
+				with open(url_cache_path, 'r') as fi:
+					resp_text = fi.read()
+				return resp_text
+		else:
+			resp = requests.get(url)
+			return resp.text
+	if url in info_table or url in ignore_table:
 		return
-	else:
-		info_table[url] = url
-		graph_table[url] = {}
-	if len(info_table) >= 100:
+	if max_urls > 0 and len(info_table) > max_urls:
 		return
 	urllib.URLopener.version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36 SE 2.X MetaSr 1.0'
-	print ' Reading [{}] ..'.format(url), ;sys.stdout.flush();
-	page = requests.get(url)
-	print '.'
-	dom =  lxml.html.fromstring(page.text)
+	info_str = '{} / {} (-{})'.format(len(info_table), max_urls, len(ignore_table))
+	if verbose:
+		print ' Reading [{}] .. [{}]'.format(url, info_str), ;sys.stdout.flush();
+	else:
+		sys.stdout.write('\x1B[2K'); sys.stdout.write('\r'); sys.stdout.write(' {}'.format(info_str)); sys.stdout.flush();
+	page_text = get_page_text(url)
+	if len(words) and any([x in page_text for x in words]) == False:
+		ignore_table[url] = url
+		if verbose:
+			print '. (ignored)'
+		return
+	info_table[url] = url
+	graph_table[url] = {}
+	dom =  lxml.html.fromstring(page_text)
 	selAnchor = lxml.cssselect.CSSSelector('a')
 	foundElements = selAnchor(dom)
 	foundUrls = [ (e.get('href'), urlparse.urljoin(url, e.get('href'))) for e in foundElements if e.get('href') and ('#' not in  e.get('href'))]
 	foundUrls = [x for x in foundUrls if x[1].startswith(stay_in)]
+	if verbose:
+		print '. ({} links)'.format(len(foundUrls))
 	for furl in foundUrls:
 		graph_table[url][furl[1]] = furl[1]
 	for furl in foundUrls:
-		do_scrape(furl[1], stay_in, info_table, graph_table)
+		do_scrape(furl[1], stay_in, info_table, graph_table, ignore_table, words, max_urls, verbose)
 	#print foundUrls
 
 def find_word_type(word):
@@ -128,34 +170,47 @@ def parse(text):
 
 def main():
 	if 'http' in sys.argv[1]:
-		info_table = {}; graph_table = {};
-		do_scrape(sys.argv[1], sys.argv[2], info_table, graph_table)
+		info_table = {}; graph_table = {}; ignore_table = {};
+		max_urls = int(sys.argv[sys.argv.index('-max')+1]) if '-max' in sys.argv else 10
+		max_links = int(sys.argv[sys.argv.index('-links')+1]) if '-links' in sys.argv else -1
+		words = sys.argv[sys.argv.index('-words')+1].split(',') if '-words' in sys.argv else []
+		out_file = sys.argv[sys.argv.index('-out')+1] if '-out' in sys.argv else 'temp'
+		verbose = '-verbose' in sys.argv
+		if verbose == False:
+			print ' Scraping [{}] ...'.format(sys.argv[1])
+		do_scrape(sys.argv[1], sys.argv[2], info_table, graph_table, ignore_table, words, max_urls, '-verbose' in sys.argv)
+		if verbose == False:
+			print ''
 		#print graph_table
+		print ' Generating graph to [{}.dot.pdf] ..'.format(out_file),; sys.stdout.flush();
 		import graphviz
 		if graphviz:
 			def make_node_name(strg):
 				return strg.replace(' ', '_').replace('.', '_').replace(':', '_').replace('/', '_').lower()
 			graph = graphviz.Digraph(comment='Analysis of "[{}]"'.format(sys.argv[1]))
 			for url,furls in graph_table.items():
-				if len(furls) < 20 and len(furls) > 0:
+				url = str_to_ascii(url)
+				if (max_links < 0 or len(furls) <= max_links) and len(furls) > 0:
 					if g_dbg:
 						print make_node_name(url)
 					graph.node(make_node_name(url), url)
 					for furl in furls.keys():
+						furl = str_to_ascii(furl)
 						if g_dbg:
 							print make_node_name(furl)
 						graph.node(make_node_name(furl), furl)
 						graph.edge(make_node_name(url), make_node_name(furl))
 			#print graph.source
-			dot_fpath = './temp'+'.dot'
+			dot_fpath = out_file+'.dot'
 			with open(os.path.expanduser(dot_fpath),'w') as fo:
 				fo.write(graph.source)
 			pdf_fpath = dot_fpath+'.pdf'
 			pop_in = ['dot', '-Tpdf', '"-o{}"'.format(pdf_fpath), '"{}"'.format(dot_fpath)]
 			pop = subprocess.Popen(' '.join(pop_in), shell = True, stdout=subprocess.PIPE)
 			out, err = pop.communicate()
-			if g_dbg and len(err):
+			if g_dbg and err and len(err):
 				vt_col('red'); print err; vt_col('default')
+			print '.'
 	elif '-bourb' in sys.argv:
 		file_path = 'bourb_el_alg_1.txt'
 		def find_matches(rex, text):
