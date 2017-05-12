@@ -44,7 +44,7 @@ def str_to_ascii(strg):
 	strg = unidecode.unidecode(strg)
 	return strg
 
-def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, words, max_urls, verbose, depth, max_depth):
+def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth, max_depth):
 	import lxml, lxml.html, lxml.cssselect, urllib, urlparse
 	def get_page_text(url):
 		def make_url_file(strg):
@@ -95,7 +95,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 	dom =  lxml.html.fromstring(page_text)
 	selAnchor = lxml.cssselect.CSSSelector('a')
 	foundElements = selAnchor(dom)
-	foundRefs = list(set([ x.get('href').split('#')[0] for x in foundElements if x.get('href') and '&' not in x.get('href') and ':' not in x.get('href') ]))
+	foundRefs = list(set([ x.get('href').split('#')[0] for x in foundElements if x.get('href') and not any([y in x.get('href') for y in specials]) ]))
 	foundUrls = [ urlparse.urljoin(url, x) for x in foundRefs]
 	foundUrls = [x for x in foundUrls if x.startswith(stay_in) and x != url]
 	#print foundUrls; sys.exit(1);
@@ -108,7 +108,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 		info_table[url]['scraped_children'] = True
 		taken_table[url] = url
 		for furl in foundUrls:
-			do_scrape(furl, stay_in, info_table, taken_table, graph_table, ignore_table, words, max_urls, verbose, depth+1, max_depth)
+			do_scrape(furl, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth+1, max_depth)
 	#print foundUrls
 
 def find_word_type(word):
@@ -178,8 +178,9 @@ def main():
 	if 'http' in sys.argv[1]:
 		info_table = {}; graph_table = {}; ignore_table = {}; taken_table = {};
 		max_urls = int(sys.argv[sys.argv.index('-max')+1]) if '-max' in sys.argv else 10
-		max_links = int(sys.argv[sys.argv.index('-links')+1]) if '-links' in sys.argv else -1
 		words = sys.argv[sys.argv.index('-words')+1].split(',') if '-words' in sys.argv else []
+		specials = sys.argv[sys.argv.index('-specials')+1].split(',') if '-specials' in sys.argv else []
+		specials = (specials + [':', '&']) if 'default' in specials else specials
 		out_file = sys.argv[sys.argv.index('-out')+1] if '-out' in sys.argv else 'temp'
 		stay_in = sys.argv[2]
 		base_url = sys.argv[1]
@@ -188,8 +189,9 @@ def main():
 		while curr_node and len(taken_table) < max_urls and prev_len != len(taken_table):
 			prev_len = len(taken_table)
 			#print 'curr', curr_node, prev_len, len(taken_table)
-			print ' Scraping [{}] ...'.format(curr_node)
-			do_scrape(curr_node, stay_in, info_table, taken_table, graph_table, ignore_table, words, max_urls, verbose, 0, 2)
+			if verbose:
+				print ' Scraping [{}] ...'.format(curr_node)
+			do_scrape(curr_node, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, 0, 2)
 			cands = []
 			for url, info in info_table.items():
 				if info['scraped_children'] == False and url not in ignore_table:
@@ -212,17 +214,16 @@ def main():
 			for url in taken_table.keys():
 				furls = graph_table[url]
 				url = str_to_ascii(url)
-				if (max_links < 0 or len(furls) <= max_links) and len(furls) > 0:
-					if g_dbg:
-						print make_node_name(url)
-					graph.node(make_node_name(url), url)
-					for furl in furls.keys():
-						if furl in taken_table:
-							furl = str_to_ascii(furl)
-							if g_dbg:
-								print make_node_name(furl)
-							graph.node(make_node_name(furl), furl)
-							graph.edge(make_node_name(url), make_node_name(furl))
+				if g_dbg:
+					print make_node_name(url)
+				graph.node(make_node_name(url), url)
+				for furl in furls.keys():
+					if furl in taken_table:
+						furl = str_to_ascii(furl)
+						if g_dbg:
+							print make_node_name(furl)
+						graph.node(make_node_name(furl), furl)
+						graph.edge(make_node_name(url), make_node_name(furl))
 			#print graph.source
 			dot_fpath = out_file+'.dot'
 			with open(os.path.expanduser(dot_fpath),'w') as fo:
