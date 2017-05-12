@@ -44,7 +44,7 @@ def str_to_ascii(strg):
 	strg = unidecode.unidecode(strg)
 	return strg
 
-def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth, max_depth):
+def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth, max_depth, wave_i):
 	import lxml, lxml.html, lxml.cssselect, urllib, urlparse
 	def get_page_text(url):
 		def make_url_file(strg):
@@ -79,7 +79,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 	#if max_urls > 0 and len(info_table) > max_urls:
 	#	return
 	urllib.URLopener.version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36 SE 2.X MetaSr 1.0'
-	info_str = '{} / {} ({}, {})  {}'.format(len(taken_table), max_urls, len(info_table), len(ignore_table), '[{}]'.format(url) if not verbose else '')
+	info_str = '{}. {} / {} ({}, {})  {}'.format(wave_i, len(taken_table), max_urls, len(info_table), len(ignore_table), '[{}]'.format(url) if not verbose else '')
 	if verbose:
 		print ' Reading [{}] .. [{}]'.format(url, info_str), ;sys.stdout.flush();
 	else:
@@ -109,7 +109,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 		info_table[url]['scraped_children'] = True
 		taken_table[url] = url
 		for furl in foundUrls:
-			do_scrape(furl, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth+1, max_depth)
+			do_scrape(furl, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, depth+1, max_depth, wave_i)
 	#print foundUrls
 
 def find_word_type(word):
@@ -187,12 +187,14 @@ def main():
 		base_url = sys.argv[1]
 		verbose = '-verbose' in sys.argv
 		prev_len = -1; curr_node = base_url;
+		wave_i = 0
 		while curr_node and len(taken_table) < max_urls and prev_len != len(taken_table):
 			prev_len = len(taken_table)
 			#print 'curr', curr_node, prev_len, len(taken_table)
 			if verbose:
 				print ' Scraping [{}] ...'.format(curr_node)
-			do_scrape(curr_node, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, 0, 2)
+			do_scrape(curr_node, stay_in, info_table, taken_table, graph_table, ignore_table, words, specials, max_urls, verbose, 0, 2, wave_i)
+			wave_i = wave_i+1
 			cands = []
 			for url, info in info_table.items():
 				if info['scraped_children'] == False and url not in ignore_table:
