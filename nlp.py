@@ -79,7 +79,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 	#if max_urls > 0 and len(info_table) > max_urls:
 	#	return
 	urllib.URLopener.version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36 SE 2.X MetaSr 1.0'
-	info_str = '{} / {} ({}, {})'.format(len(taken_table), max_urls, len(info_table), len(ignore_table))
+	info_str = '{} / {} ({}, {})  {}'.format(len(taken_table), max_urls, len(info_table), len(ignore_table), '[{}]'.format(url) if not verbose else '')
 	if verbose:
 		print ' Reading [{}] .. [{}]'.format(url, info_str), ;sys.stdout.flush();
 	else:
