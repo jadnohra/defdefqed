@@ -93,6 +93,7 @@ def do_scrape(url, stay_in, info_table, taken_table, graph_table, ignore_table, 
 	info_table[url] = { 'scraped_children':False }
 	graph_table[url] = {}
 	dom =  lxml.html.fromstring(page_text)
+	info_table[url]['title'] = dom.find(".//title").text
 	selAnchor = lxml.cssselect.CSSSelector('a')
 	foundElements = selAnchor(dom)
 	foundRefs = list(set([ x.get('href').split('#')[0] for x in foundElements if x.get('href') and not any([y in x.get('href') for y in specials]) ]))
@@ -208,21 +209,45 @@ def main():
 		print ' Generating graph to [{}.dot.pdf] ..'.format(out_file),; sys.stdout.flush();
 		import graphviz
 		if graphviz:
-			def make_node_name(strg):
-				return strg.replace(' ', '_').replace('.', '_').replace(':', '_').replace('/', '_').lower()
 			graph = graphviz.Digraph(comment='Analysis of "[{}]"'.format(sys.argv[1]))
+			def make_node_title(url):
+					title = str_to_ascii(info_table[url]['title'])
+					strg = title if title and len(title) else url
+					return strg.replace(com_pat, '')
+			com_pat = ''
+			titles = []
+			for url in taken_table.keys():
+				titles.append(make_node_title(url))
+			if len(titles):
+				n0 = titles[0]
+				for i in range(len(n0)):
+					for j in range(len(n0)):
+						if (i+j < len(n0)):
+							pat = n0[i:i+j+1]
+							if len(pat) > len(com_pat) and all([pat in x for x in titles]):
+								com_pat = pat
+			if verbose or g_dbg:
+				print 'Common Pattern: [{}]'.format(com_pat)
+			def make_node_title(url):
+					title = str_to_ascii(info_table[url]['title'])
+					strg = title if title and len(title) else url
+					return strg.replace(com_pat, '')
+			def make_node_name(url):
+					title = str_to_ascii(info_table[url]['title'])
+					strg = title if title and len(title) else url
+					return strg.replace(' ', '_').replace('.', '_').replace(':', '_').replace('/', '_').lower()
 			for url in taken_table.keys():
 				furls = graph_table[url]
 				url = str_to_ascii(url)
 				if g_dbg:
 					print make_node_name(url)
-				graph.node(make_node_name(url), url)
+				graph.node(make_node_name(url), make_node_title(url))
 				for furl in furls.keys():
 					if furl in taken_table:
 						furl = str_to_ascii(furl)
 						if g_dbg:
 							print make_node_name(furl)
-						graph.node(make_node_name(furl), furl)
+						graph.node(make_node_name(furl), make_node_title(furl))
 						graph.edge(make_node_name(url), make_node_name(furl))
 			#print graph.source
 			dot_fpath = out_file+'.dot'
