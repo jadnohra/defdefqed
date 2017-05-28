@@ -93,19 +93,25 @@ def wikioff_cat_graph_down(cur, cat_title, max_depth, verbose=False, progress=Fa
 		print ' (done)'
 	return graph
 
-def wikioff_graph_node_purity(cur, graph, cat_title):
+def wikioff_graph_mothers(graph, cat_title):
+	mothers = {}
+	for k,v in graph.items():
+			for child in v:
+				if child not in mothers:
+					mothers[child] = [k]
+				else:
+					mothers[child].append(k)
+	if cat_title not in mothers:
+		mothers[cat_title] = []
+	return mothers
+
+def wikioff_graph_node_purity(cur, graph, cat_title, graph_mothers):
 	def list_diff(l1, l2):
 		sl1 = set(l1); sl2 = set(l2); slu = sl1.union(sl2)
 		return [x for x in slu if x in sl1 and x not in sl2 or x in sl2 and x not in sl1]
-	def extract_parents(graph, node):
-		parents = []
-		for k,v in graph.items():
-			if node in v:
-				parents.append(k)
-		return parents
 	cat_parents, cat_children = wikioff_get_cat_edges(cur, cat_title, True, True)
 	graph_children = graph[cat_title]
-	graph_parents = extract_parents(graph, cat_title)
+	graph_parents = graph_mothers[cat_title]
 	diff_parents = list_diff(cat_parents, graph_parents)
 	is_leaf = (len(graph[cat_title]) == 0)
 	if is_leaf:
@@ -114,8 +120,8 @@ def wikioff_graph_node_purity(cur, graph, cat_title):
 		diff_children = list_diff(cat_children, graph_children)
 	return (diff_parents, diff_children, 'leaf' if is_leaf else '')
 
-def wikioff_graph_node_is_pure(cur, graph, cat_title):
-	diff_parents, diff_children, is_leaf = wikioff_graph_node_purity(cur, graph, cat_title)
+def wikioff_graph_node_is_pure(cur, graph, cat_title, graph_mothers):
+	diff_parents, diff_children, is_leaf = wikioff_graph_node_purity(cur, graph, cat_title, graph_mothers)
 	return len(diff_parents) + len(diff_children) == 0
 
 def wikioff_graph_root_paths(graph, root):
@@ -133,19 +139,24 @@ def wikioff_graph_root_paths(graph, root):
 	return paths
 
 def wikioff_graph_pure_nodes(cur, graph, cat_title, allow_impure_parents, progress = False):
+	graph_mothers = wikioff_graph_mothers(graph, cat_title)
 	pure = []
 	pure.append(cat_title)
 	for i,k in enumerate(sorted(graph.keys())):
 		if progress:
 			info_str = '{}/{}. [{}]...'.format(i+1, len(graph), k)
 			sys.stdout.write('\x1B[2K'); sys.stdout.write('\r'); sys.stdout.write('  {}'.format(info_str)); sys.stdout.flush();
-			if wikioff_graph_node_is_pure(cur, graph, k):
+			if wikioff_graph_node_is_pure(cur, graph, k, graph_mothers):
 				pure.append(k)
 	if progress:
 		print ''
 	if allow_impure_parents == False:
 		fully_pure = []
+		if progress:
+			print '  paths ..',; sys.stdout.flush();
 		paths = wikioff_graph_root_paths(graph, cat_title)
+		if progress:
+			print '.'
 		pi = 0
 		pureset = set(pure)
 		for node in pure:
@@ -163,14 +174,15 @@ def wikioff_graph_pure_nodes(cur, graph, cat_title, allow_impure_parents, progre
 	return pure
 
 
-def wikioff_print_graph_purity(cur, graph, verbose=False):
+def wikioff_print_graph_purity(cur, graph, cat_title, verbose=False):
+	graph_mothers = wikioff_graph_mothers(graph, cat_title)
 	col_pure = 'green'; col_impure = 'yellow';
 	for i,k in enumerate(sorted(graph.keys())):
 		if verbose:
-			status = wikioff_graph_node_purity(cur, graph, k)
+			status = wikioff_graph_node_purity(cur, graph, k, graph_mothers)
 			is_pure = len(status[0])+len(status[1]) == 0
 		else:
-			status = 'yes' if wikioff_graph_node_is_pure(cur, graph, k) else 'no'
+			status = 'yes' if wikioff_graph_node_is_pure(cur, graph, k, graph_mothers) else 'no'
 			is_pure = status == 'yes'
 		print ' {}. {}[{}]{} : {}'.format(i, vt_col_code(col_pure if is_pure else col_impure), k, vt_col_code('default'), status)
 
@@ -271,7 +283,7 @@ def test2():
 	half_pure = sys_argv_has(['-half_pure'])
 	graph = wikioff_run_with_conn(lambda cur: wikioff_cat_graph_down(cur, cat_title, max_depth, verbose=False, progress=g_progress))
 	if sys_argv_has(['-purity']):
-		wikioff_run_with_conn(lambda cur: wikioff_print_graph_purity(cur, graph, verbose=g_verbose))
+		wikioff_run_with_conn(lambda cur: wikioff_print_graph_purity(cur, graph, cat_title, verbose=g_verbose))
 	else:
 		print ' total nodes: {}'.format(len(graph))
 	if sys_argv_has(['-write']):
