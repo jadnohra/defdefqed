@@ -124,10 +124,10 @@ def wikioff_graph_node_is_pure(cur, graph, cat_title, graph_mothers):
 	diff_parents, diff_children, is_leaf = wikioff_graph_node_purity(cur, graph, cat_title, graph_mothers)
 	return len(diff_parents) + len(diff_children) == 0
 
-def wikioff_graph_root_paths(graph, root, progress = False):
+def wikioff_graph_root_paths(graph, root, interest_nodes = None, progress = False):
 	paths = {}
 	def recurse(path, node, pcount):
-		if node in path:
+		if node in path or (interest_nodes is not None and node not in interest_nodes):
 			return #loop
 		new_path = copy.copy(path); new_path.append(node);
 		if node not in paths:
@@ -161,17 +161,17 @@ def wikioff_graph_pure_nodes(cur, graph, cat_title, allow_impure_parents, progre
 		fully_pure = []
 		if progress:
 			print '  paths ..',; sys.stdout.flush();
-		paths = wikioff_graph_root_paths(graph, cat_title, progress)
+		paths = wikioff_graph_root_paths(graph, cat_title, pure, progress)
 		if progress:
 			print '.'
 		pi = 0
 		pureset = set(pure)
 		for node in pure:
-			node_paths = paths[node]
+			node_paths = (paths[node] if node in paths else None)
 			if progress:
-				info_str = '{}/{}. [{} x {}]...'.format(pi+1, len(pure), node, len(node_paths))
+				info_str = '{}/{}. [{} x {}]...'.format(pi+1, len(pure), node, len(node_paths) if node_paths else 0)
 				sys.stdout.write('\x1B[2K'); sys.stdout.write('\r'); sys.stdout.write('  {}'.format(info_str)); sys.stdout.flush();
-			has_a_pure_path = any([all([x in pureset for x in node_path]) for node_path in node_paths])
+			has_a_pure_path = (node_paths is not None) and any([all([x in pureset for x in node_path]) for node_path in node_paths])
 			if has_a_pure_path:
 				fully_pure.append(node)
 			pi = pi+1
