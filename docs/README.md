@@ -1,4 +1,4 @@
-[Automatically Extracted](./https://github.com/jadnohra/defdefqed/blob/master/nlp.py) Knowledge Graphs
+[Automatically Extracted](https://github.com/jadnohra/defdefqed/blob/master/nlp.py) Knowledge Graphs
 ----------------------------------------
 
 - [Mathematical Logic](./encycofmath_logic.dot.pdf)
