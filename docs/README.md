@@ -1,4 +1,5 @@
-- [Graph of _First-Order-Logic_ On Wikipedia](./wikipedia_fol.dot.pdf)
+Automatic Knowledge Graph Examples
+    - [Graph of _First-Order-Logic_ (extracted from wikipedia)](./wikipedia_fol.dot.pdf)
 
 Dear reader,
 
