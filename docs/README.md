@@ -1,7 +1,10 @@
 Automatic Knowledge Graph Examples
-    - [Graph of _First-Order-Logic_ (extracted from wikipedia)](./wikipedia_fol.dot.pdf)
+----------------------------------
 
-Dear reader,
+- [Graph of _First-Order-Logic_ (extracted from wikipedia)](./wikipedia_fol.dot.pdf)
+
+Dear reader
+===========
 
 1. The __technological singularity is possible__ until proven otherwise.
 2. Since the singularity is possible, __it is also inevitable__, given the universe's time-to-live allows.
