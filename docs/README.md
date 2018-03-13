@@ -1,3 +1,5 @@
+- [First-Order-Logic On Wikipedia](./wikipedia_fol.dot.pdf)
+
 Dear reader,
 
 1. The __technological singularity is possible__ until proven otherwise.
