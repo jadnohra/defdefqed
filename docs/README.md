@@ -4,8 +4,9 @@ Automatically Extracted Knowledge Graphs
 - [First-Order-Logic](./wikipedia_fol.dot.pdf)
 - [Real Analysis](./encycofmath_analysis.dot.pdf)
 
-Dear reader
-===========
+
+Dear Reader
+-----------
 
 1. The __technological singularity is possible__ until proven otherwise.
 2. Since the singularity is possible, __it is also inevitable__, given the universe's time-to-live allows.
