@@ -1,6 +1,7 @@
 Automatically Extracted Knowledge Graphs
 ----------------------------------------
 
+- [Mathematical Logic](./encycofmath_logic.dot.pdf)
 - [First-Order-Logic](./wikipedia_fol.dot.pdf)
 - [Real Analysis](./encycofmath_analysis.dot.pdf)
 - [Differential Geometry](./encycofmath_diffgeom.dot.pdf)
