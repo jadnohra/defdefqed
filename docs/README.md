@@ -2,7 +2,7 @@
 ----------------------------------------
 
 - [Mathematical Logic](./encycofmath_logic.dot.pdf)
-    - ![](./encycofmath_logic.dot.png)
+    - ![logic preview](./encycofmath_logic.dot.png)
 - [First-Order-Logic](./wikipedia_fol.dot.pdf)
 - [Real Analysis](./encycofmath_analysis.dot.pdf)
 - [Differential Geometry](./encycofmath_diffgeom.dot.pdf)
