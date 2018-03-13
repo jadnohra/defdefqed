@@ -1,4 +1,4 @@
-- [First-Order-Logic On Wikipedia](./wikipedia_fol.dot.pdf)
+- [Graph of _First-Order-Logic_ On Wikipedia](./wikipedia_fol.dot.pdf)
 
 Dear reader,
 
