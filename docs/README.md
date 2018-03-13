@@ -2,7 +2,7 @@ Dear reader,
 
 1. The __technological singularity is possible__ until proven otherwise.
 2. Since the singularity is possible, __it is also inevitable__, given the universe's time-to-live allows.
-3. We believe that __no work is useful other than accelerating this inevitability__. At the point of which, we can all go swimming or enjoying it.
+3. We believe that __no work is useful other than accelerating this inevitability__. At the point of which, we can __all go swimming__.
 4. We believe that both non-human and human computers can help the acceleration.
 5. We believe that given it is 2018, enlarged mathematics can be in a much better state to support this.
 6. We believe that the role of computation, be it calculating Pi or __proving a theorem, will be taken over by non-human computers__.
