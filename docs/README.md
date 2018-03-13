@@ -22,11 +22,11 @@ i. At the same time, we must make non-human computers better at __digesting this
 9. We must find the right problems to make our non-human computers work on, they are unable to do it for themselves.
 10. We must help non-human computers express themselves such that we understand and can think about what they say, and then together, cooperate on the next results.
 11. Enlarged mathematics is a single discipline and it should never have been different. Enlarged mathematics is all of:
-  1. _'Abstract' mathematics_
-  2. _'Applied' mathematics_
-  3. _Computer Science_
-  4. _The Natural Sciences_
-  5. The science of _education_
-  6. The integral _history of all_ of the above
-  7. The _philosophy of all_ of the above
+    1. _'Abstract' mathematics_
+    2. _'Applied' mathematics_
+    3. _Computer Science_
+    4. _The Natural Sciences_
+    5. The science of _education_
+    6. The integral _history of all_ of the above
+    7. The _philosophy of all_ of the above
 12. We are __defdefqed__. Join us.
