@@ -1,8 +1,8 @@
 Automatically Extracted Knowledge Graphs
 ----------------------------------------
 
-- [_First-Order-Logic_](./wikipedia_fol.dot.pdf)
-- [__Real Analysis__](./)
+- [First-Order-Logic](./wikipedia_fol.dot.pdf)
+- [Real Analysis](./encycofmath_analysis.dot.pdf)
 
 Dear reader
 ===========
