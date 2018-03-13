@@ -1,7 +1,7 @@
 Automatically Extracted Knowledge Graphs
 ----------------------------------------
 
-- [Graph of _First-Order-Logic_ (extracted from wikipedia)](./wikipedia_fol.dot.pdf)
+- [_First-Order-Logic_](./wikipedia_fol.dot.pdf)
 
 Dear reader
 ===========
